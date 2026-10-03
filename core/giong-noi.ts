@@ -37,10 +37,15 @@ function dungDocTrinhDuyet() { try { speechSynthesis?.cancel(); } catch { /* b�
 // ---------- Giọng đám mây (ElevenLabs / Azure qua /api/giong-noi/doc) ----------
 export type CauHinhGiongClient = { tts: "trinh_duyet" | "elevenlabs" | "azure"; stt: "trinh_duyet" | "azure"; toc_do: number; co_elevenlabs: boolean; co_azure: boolean };
 let _ch: Promise<CauHinhGiongClient> | null = null;
+let _chDaCo: CauHinhGiongClient | null = null;
 /** Cấu hình giọng của workspace (cache trong phiên trang). */
 export function cauHinhGiong(lamMoi = false): Promise<CauHinhGiongClient> {
-  if (!_ch || lamMoi) _ch = fetch("/api/giong-noi/cau-hinh").then((r) => (r.ok ? r.json() : { tts: "trinh_duyet", stt: "trinh_duyet", toc_do: 1, co_elevenlabs: false, co_azure: false })).catch(() => ({ tts: "trinh_duyet", stt: "trinh_duyet", toc_do: 1, co_elevenlabs: false, co_azure: false }));
+  if (!_ch || lamMoi) _ch = fetch("/api/giong-noi/cau-hinh").then((r) => (r.ok ? r.json() : { tts: "trinh_duyet", stt: "trinh_duyet", toc_do: 1, co_elevenlabs: false, co_azure: false })).catch(() => ({ tts: "trinh_duyet", stt: "trinh_duyet", toc_do: 1, co_elevenlabs: false, co_azure: false })).then((c: CauHinhGiongClient) => (_chDaCo = c));
   return _ch;
+}
+/** Gọi NGAY trong lượt chạm của người dùng: Safari iPhone chỉ cho phát giọng đọc nếu lần phát đầu nằm trong lượt chạm. */
+export function moKhoaAmThanh() {
+  try { const u = new SpeechSynthesisUtterance(""); u.volume = 0; speechSynthesis.speak(u); } catch { /* bỏ qua */ }
 }
 let audioHienTai: HTMLAudioElement | null = null; let hangDoiId = 0;
 function tachCau(text: string): string[] { return text.replace(/«|»/g, "").split(/(?<=[.!?…])\s+/).map((c) => c.trim()).filter(Boolean); }
@@ -74,6 +79,7 @@ export function dungDoc() { hangDoiId++; if (audioHienTai) { try { audioHienTai.
 
 // ---------- STT Azure trong trình duyệt (token ngắn hạn, không lộ key) ----------
 export type BoNghe = { dung: () => void };
+type TuyChonNghe = { onTam: (t: string) => void; onXong: (t: string) => void; onBatDauNoi?: () => void; onLoi?: (m: string) => void; onCanCham?: () => void };
 export async function batNgheAzure(o: { onTam: (t: string) => void; onXong: (t: string) => void; onBatDauNoi?: () => void; onLoi?: (m: string) => void }): Promise<BoNghe> {
   const t = await fetch("/api/giong-noi/token").then((r) => (r.ok ? r.json() : null)).catch(() => null);
   if (!t) throw new Error("Chưa cấu hình Azure Speech");
@@ -89,21 +95,47 @@ export async function batNgheAzure(o: { onTam: (t: string) => void; onXong: (t: 
   await new Promise<void>((res, rej) => rec.startContinuousRecognitionAsync(res, (er) => rej(new Error(er))));
   return { dung: () => rec.stopContinuousRecognitionAsync(() => rec.close(), () => rec.close()) };
 }
+/** Mã lỗi Web Speech → câu báo cho người dùng (kèm mã gốc); null = lỗi thường gặp không cần báo (im lặng, bị ngắt). `dung` = lỗi không tự hết, thử lại vô ích. */
+export function loiNhanGiong(ma: string): { thongBao: string; dung: boolean } | null {
+  if (ma === "no-speech" || ma === "aborted") return null;
+  const m = ` (mã: ${ma})`;
+  const ua = typeof navigator === "undefined" ? "" : navigator.userAgent;
+  const iphone = /iPhone|iPad|iPod/i.test(ua);
+  if ((ma === "not-allowed" || ma === "service-not-allowed") && /Zalo|FBAN|FBAV|FB_IAB|Instagram|Messenger|Line\/|TikTok|musical_ly/i.test(ua)) return { thongBao: "Trang đang mở bên trong ứng dụng (Zalo/Facebook/Messenger…) nên micro bị chặn. Bấm ⋯ → «Mở bằng trình duyệt» (Chrome hoặc Safari) rồi thử lại." + m, dung: true };
+  if (ma === "service-not-allowed" && iphone) return { thongBao: "iPhone cần bật Đọc chính tả: Cài đặt → Cài đặt chung → Bàn phím → bật «Đọc chính tả», rồi tải lại trang." + m, dung: true };
+  if (ma === "not-allowed" || ma === "service-not-allowed") return { thongBao: (iphone ? "Safari chặn micro: Cài đặt → Safari → Micrô → «Cho phép» (hoặc chữ «aA» trên thanh địa chỉ → Cài đặt trang web → Micrô), rồi tải lại trang." : "Trình duyệt chặn micro: chạm biểu tượng bên trái địa chỉ trang → Quyền → Micrô → Cho phép, rồi tải lại trang.") + m, dung: true };
+  if (ma === "audio-capture") return { thongBao: "Không thu được tiếng từ micro: máy chưa có micro, micro đang bị ứng dụng khác dùng, hoặc hệ điều hành chưa bật đầu vào micro." + m, dung: true };
+  if (ma === "network") return { thongBao: "Nhận dạng giọng nói của trình duyệt cần mạng (gửi tiếng lên máy chủ Google/Apple); kiểm tra mạng hoặc dùng Azure STT." + m, dung: false };
+  if (ma === "language-not-supported") return { thongBao: "Trình duyệt không nhận dạng được tiếng Việt; dùng Chrome/Safari bản mới hoặc cấu hình Azure STT." + m, dung: true };
+  return { thongBao: "Lỗi nhận dạng giọng nói" + m, dung: false };
+}
 /** Web Speech API (trình duyệt) với cùng giao diện. */
-export function batNgheTrinhDuyet(o: { onTam: (t: string) => void; onXong: (t: string) => void; onBatDauNoi?: () => void; onLoi?: (m: string) => void }): BoNghe {
-  type SR = { lang: string; continuous: boolean; interimResults: boolean; start(): void; stop(): void; onresult: ((e: { resultIndex: number; results: ArrayLike<{ isFinal: boolean; 0: { transcript: string } }> }) => void) | null; onerror: ((e: { error: string }) => void) | null; onend: (() => void) | null; onspeechstart: (() => void) | null };
+export function batNgheTrinhDuyet(o: TuyChonNghe): BoNghe {
+  type SR = { lang: string; continuous: boolean; interimResults: boolean; start(): void; stop(): void; onresult: ((e: { resultIndex: number; results: ArrayLike<{ isFinal: boolean; 0: { transcript: string } }> }) => void) | null; onerror: ((e: { error: string }) => void) | null; onend: (() => void) | null; onstart: (() => void) | null; onspeechstart: (() => void) | null };
   const w = window as unknown as { SpeechRecognition?: new () => SR; webkitSpeechRecognition?: new () => SR };
-  const C = w.SpeechRecognition || w.webkitSpeechRecognition; if (!C) throw new Error("Trình duyệt không hỗ trợ nhận dạng giọng nói (dùng Chrome/Edge hoặc cấu hình Azure)");
-  const r = new C(); r.lang = "vi-VN"; r.continuous = true; r.interimResults = true; let song = true;
+  const C = w.SpeechRecognition || w.webkitSpeechRecognition; if (!C) throw new Error("Trình duyệt không hỗ trợ nhận dạng giọng nói (dùng Chrome/Safari bản mới hoặc cấu hình Azure)");
+  const r = new C(); r.lang = "vi-VN"; r.continuous = true; r.interimResults = true;
+  let song = true, daChay = false, choChay = false, hen: number | undefined;
+  // Điện thoại hay ngắt phiên nhận dạng (sau mỗi câu, khi phát giọng khách). Tự bật lại ngoài lượt chạm thì iPhone/Android có thể từ chối
+  // (báo not-allowed dù đã cho quyền) hoặc lặng im: khi đó báo onCanCham để giao diện chờ lượt chạm kế tiếp thay vì báo nhầm là bị chặn.
+  const canCham = () => { song = false; choChay = false; clearTimeout(hen); if (o.onCanCham) o.onCanCham(); else o.onLoi?.("Điện thoại đã ngắt micro; dừng nghe rồi bật lại để tiếp tục."); };
+  const chay = () => { choChay = true; try { r.start(); } catch { if (daChay) canCham(); return; } clearTimeout(hen); if (daChay) hen = window.setTimeout(() => { if (choChay) canCham(); }, 3000); };
+  r.onstart = () => { daChay = true; choChay = false; clearTimeout(hen); };
   r.onresult = (e) => { let tam = ""; for (let i = e.resultIndex; i < e.results.length; i++) { const k = e.results[i]; const tx = k[0].transcript.trim(); if (k.isFinal) { if (tx) o.onXong(tx); } else tam += tx + " "; } if (tam) o.onTam(tam.trim()); };
   r.onspeechstart = () => o.onBatDauNoi?.();
-  r.onerror = (e) => { if (e.error === "not-allowed") { song = false; o.onLoi?.("Chưa cấp quyền micro"); } else if (e.error !== "no-speech" && e.error !== "aborted") o.onLoi?.(e.error); };
-  r.onend = () => { if (song) { try { r.start(); } catch { /* bỏ qua */ } } };
-  r.start();
-  return { dung: () => { song = false; try { r.stop(); } catch { /* bỏ qua */ } } };
+  r.onerror = (e) => {
+    if (daChay && (e.error === "not-allowed" || e.error === "service-not-allowed")) { canCham(); return; }
+    const l = loiNhanGiong(e.error); if (!l) return;
+    o.onLoi?.(l.thongBao);
+    if (l.dung) { song = false; o.onCanCham?.(); } // sửa quyền xong chạm «Chạm để nói» là thử lại, không phải tải lại trang
+  };
+  r.onend = () => { if (song) chay(); };
+  chay();
+  return { dung: () => { song = false; clearTimeout(hen); try { r.stop(); } catch { /* bỏ qua */ } } };
 }
-export async function batNghe(o: Parameters<typeof batNgheAzure>[0]): Promise<{ bo: BoNghe; nha: "azure" | "trinh_duyet" }> {
-  const ch = await cauHinhGiong();
+export async function batNghe(o: TuyChonNghe): Promise<{ bo: BoNghe; nha: "azure" | "trinh_duyet" }> {
+  // Không await khi đã có cấu hình: r.start() phải chạy đồng bộ trong lượt chạm «Nhấc máy», Safari iPhone từ chối nếu chậm một nhịp.
+  const ch = _chDaCo ?? (await cauHinhGiong());
   if (ch.stt === "azure") { try { return { bo: await batNgheAzure(o), nha: "azure" }; } catch (e) { o.onLoi?.(`Azure STT lỗi (${(e as Error).message}), dùng trình duyệt`); } }
   return { bo: batNgheTrinhDuyet(o), nha: "trinh_duyet" };
 }

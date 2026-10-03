@@ -36,7 +36,7 @@ Giao diện SÁNG mặc định (nút đổi tối trên header, lưu localStora
 ## Đợt 5 — Giọng nói đám mây + UX (27/09/2026)
 - **ElevenLabs / Azure Speech do người dùng tự kết nối** trong app (`/cai-dat/giong-noi`, bảng `tich_hop_giong_noi`, khóa mã hóa AES-256-GCM qua `core/ma-hoa.ts` với khóa dẫn xuất từ `PHIEN_SECRET`). `services/giong-noi.ts`: kiểm tra kết nối (danh sách giọng ElevenLabs, token Azure), TTS mp3 (`/api/giong-noi/doc`), token STT Azure 10 phút (`/api/giong-noi/token`). Trình duyệt không bao giờ thấy khóa.
 - Client `core/giong-noi.ts`: `docTuDong()` (đám mây nếu có, tách câu phát sớm, rơi về giọng trình duyệt), `batNghe()` hợp nhất Azure STT (SDK `microsoft-cognitiveservices-speech-sdk`, import động) / Web Speech.
-- Role-play **«Gọi bằng giọng»**: nghe mic liên tục → ngừng 0,9 giây là gửi → khách trả lời bằng giọng → nói chen là khách im. Copilot cuộc gọi thật dùng Azure STT khi cấu hình.
+- Role-play / Gọi điện: nút **«🎙 Giữ để nói»** (push-to-talk): nhấn = `batNghe()`, thả = dừng; chạm nhanh < 350 ms = bật/tắt; không tự gửi, sale bấm Gửi. Bật nhận dạng phải đồng bộ trong lượt chạm (iPhone). Copilot cuộc gọi thật dùng Azure STT khi cấu hình.
 - UX: `NutCho` (useFormStatus) cho mọi nút gọi AI, `ThanhTienTrinh` khi chuyển trang/submit, `loading.tsx` khung xương cho từng nhóm route, sinh DISC từng nhóm qua `/api/disc` có tiến độ (1/4…).
 - Đổi `PHIEN_SECRET` sẽ làm khóa đã lưu không giải mã được (người dùng nhập lại).
 

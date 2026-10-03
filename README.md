@@ -36,7 +36,7 @@ Tài liệu gốc là spec TAKI FUNNEL OS v2 (module M15 Sales Engine, M18 LMS) 
 | Nhóm | Có gì |
 |---|---|
 | **Khởi động 2 bước** | Quản lý đăng nhập lần đầu được đưa thẳng vào màn nạp DNA (nhập tay hoặc AI trích từ giới thiệu công ty) rồi thêm sản phẩm; có thể bỏ qua và làm sau. Tổng quan có 4 nút lớn: Gọi điện với AI · Role-play · Nạp DNA và Sản phẩm · Tạo kịch bản DISC. |
-| **Gọi điện với AI** | Menu riêng: chọn sản phẩm, nhóm khách DISC, độ khó, bấm «Gọi ngay». AI dựng khách ảo, màn «Nhấc máy» hiện lên, khách nói «Alô» trước bằng giọng ElevenLabs / Azure / trình duyệt; sale nói vào mic, ngừng một giây là khách trả lời, nói chen là khách im. Kết thúc là chấm 6 kỹ năng và độ phù hợp DISC. |
+| **Gọi điện với AI** | Menu riêng: chọn sản phẩm, nhóm khách DISC, độ khó, bấm «Gọi ngay». AI dựng khách ảo, màn «Nhấc máy» hiện lên, khách nói «Alô» trước bằng giọng ElevenLabs / Azure / trình duyệt; sale **giữ nút 🎙 để nói** (chữ hiện ngay trong ô nhập), thả ra, sửa nếu cần rồi bấm Gửi; giữ nút khi khách đang nói là khách im. Kết thúc là chấm 6 kỹ năng và độ phù hợp DISC. |
 | **DNA doanh nghiệp** | Hồ sơ doanh nghiệp có phiên bản: mô tả, khách mục tiêu, nỗi đau, USP, xưng hô, phong cách, **từ cấm**, **số liệu được phép**, đối thủ, chính sách. Nhập tay hoặc **dán tài liệu để AI trích**. AI Gateway tự nạp vào mọi tác vụ, đầu ra có từ cấm bị đánh dấu trong nhật ký. |
 | **Sản phẩm** | Hồ sơ đầy đủ theo bậc thang giá trị (tầng 0–4): đối tượng, kết quả kỳ vọng, hình thức, thời lượng, điểm bán hàng, phản đối thường gặp, chính sách, so sánh đối thủ, tài liệu. Dùng chung cho role-play, phân tích, gợi ý và copilot. |
 | **Copilot cuộc gọi thật** | Trình duyệt nghe cuộc gọi (loa ngoài) và chuyển thành lời thoại theo người nói (phím cách để đổi, bấm câu để sửa vai). **Lớp tức thì**: bắt phản đối bằng từ khóa → câu trả lời chuẩn, cảnh báo tuân thủ bằng luật. **Lớp AI** tự chạy sau mỗi câu khách nói: câu nên nói ngay, 2–3 câu hỏi nên hỏi, xử lý phản đối, tín hiệu và độ sẵn sàng chốt, bước tiếp. Đọc gợi ý vào tai nghe. Kết thúc là phân tích đầy đủ. |
@@ -68,7 +68,7 @@ Chín tác vụ: `sinh_persona` · `khach_tra_loi` · `cham_luyen_tap` · `phan_
 - **ElevenLabs**: giọng tự nhiên nhất, có cảm xúc, nhân bản được giọng thật; chọn giọng từ tài khoản, model Flash v2.5 cho tiếng Việt.
 - **Azure Speech**: giọng HoaiMy / NamMinh neural, gói miễn phí 0,5 triệu ký tự/tháng; kiêm **nhận dạng giọng nói** chính xác hơn trình duyệt và chạy được trên Safari (token 10 phút, không lộ khóa).
 - **Trình duyệt** (miễn phí, giọng máy): tự chọn giọng tiếng Việt tốt nhất có sẵn; Edge tốt nhất.
-Khóa API được mã hóa AES-256 trước khi lưu và không bao giờ gửi xuống trình duyệt. Trong role-play, chế độ **«Gọi bằng giọng»**: sale nói vào mic, ngừng một giây là gửi, khách trả lời bằng giọng, nói chen là khách im.
+Khóa API được mã hóa AES-256 trước khi lưu và không bao giờ gửi xuống trình duyệt. Trong role-play, nút **«🎙 Giữ để nói»**: giữ để nói (chạm nhanh thì bật, chạm lần nữa để tắt), thả ra rồi bấm Gửi; khách trả lời bằng giọng, giữ nút là khách im.
 
 ## Kiến trúc
 
